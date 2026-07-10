@@ -1,0 +1,28 @@
+#root {
+  min-height: 100vh;
+}
+
+.encabezado-heladeria {
+  background: linear-gradient(135deg, #6f42c1, #d63384);
+  color: white;
+}
+
+.encabezado-heladeria h1 {
+  font-weight: 700;
+}
+
+.card {
+  border-radius: 14px;
+}
+
+.form-control {
+  border-radius: 8px;
+}
+
+.btn {
+  border-radius: 8px;
+}
+
+.table th {
+  white-space: nowrap;
+}
