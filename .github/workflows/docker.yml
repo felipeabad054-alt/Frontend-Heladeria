@@ -9,34 +9,49 @@
 
           cd /home/ubuntu/Docker-Heladeria
 
-          compose() {
-            docker compose \
-              --env-file .env.aws \
-              -f docker-compose.aws.yml \
-              "$@"
-          }
+          echo "Descargando imagen latest del frontend..."
 
-          echo "Descargando nueva imagen del frontend..."
-          compose pull frontend
+          docker compose \
+            --env-file .env.aws \
+            -f docker-compose.aws.yml \
+            pull frontend
 
-          echo "Recreando contenedor del frontend..."
-          compose up -d --no-deps --force-recreate frontend
+          echo "Recreando el frontend..."
+
+          docker compose \
+            --env-file .env.aws \
+            -f docker-compose.aws.yml \
+            up -d --no-deps --force-recreate frontend
 
           echo "Esperando que el frontend esté disponible..."
 
           for intento in $(seq 1 20); do
             if curl -fsSI http://localhost:5173 > /dev/null; then
               echo "Frontend funcionando correctamente."
-              compose ps frontend
+
+              docker compose \
+                --env-file .env.aws \
+                -f docker-compose.aws.yml \
+                ps frontend
+
               exit 0
             fi
 
-            echo "Intento $intento de 20: frontend todavía iniciando..."
+            echo "Intento $intento de 20: frontend iniciando..."
             sleep 3
           done
 
-          echo "El frontend no respondió después de 60 segundos."
-          compose ps frontend
-          compose logs --tail=100 frontend
+          echo "ERROR: El frontend no respondió después de 60 segundos."
+
+          docker compose \
+            --env-file .env.aws \
+            -f docker-compose.aws.yml \
+            ps frontend
+
+          docker compose \
+            --env-file .env.aws \
+            -f docker-compose.aws.yml \
+            logs --tail=100 frontend
+
           exit 1
           EOF
