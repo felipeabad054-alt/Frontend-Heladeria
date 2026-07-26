@@ -1,4 +1,4 @@
-name: Construir, publicar y probar SSH del Frontend
+name: CI-CD Frontend Heladeria
 
 on:
   push:
@@ -8,6 +8,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: frontend-heladeria-production
+  cancel-in-progress: true
 
 jobs:
   build-and-push:
@@ -66,10 +70,7 @@ jobs:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
           install -m 700 -d ~/.ssh
-
-          printf '%s\n' "$EC2_SSH_KEY" \
-            > ~/.ssh/github_actions_frontend
-
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/github_actions_frontend
           chmod 600 ~/.ssh/github_actions_frontend
 
           ssh-keyscan \
@@ -101,5 +102,95 @@ jobs:
           test -d /home/ubuntu/Docker-Heladeria
 
           echo "Directorio Docker-Heladeria encontrado."
-          echo "Prueba SSH del Frontend finalizada correctamente."
+          EOF
+
+  deploy-frontend:
+    name: Desplegar Frontend en EC2
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test-ssh
+
+    steps:
+      - name: Preparar acceso SSH para despliegue
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/github_actions_frontend
+          chmod 600 ~/.ssh/github_actions_frontend
+
+          ssh-keyscan \
+            -T 10 \
+            -H "$EC2_HOST" \
+            >> ~/.ssh/known_hosts
+
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Actualizar Frontend en EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh -T \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/github_actions_frontend \
+            "ubuntu@$EC2_HOST" 'bash -se' <<'EOF'
+          set -Eeuo pipefail
+
+          cd /home/ubuntu/Docker-Heladeria
+
+          compose() {
+            docker compose \
+              --env-file .env.aws \
+              -f docker-compose.aws.yml \
+              "$@"
+          }
+
+          echo "Descargando la imagen mas reciente del Frontend..."
+          compose pull frontend
+
+          echo "Recreando unicamente el contenedor Frontend..."
+          compose up \
+            -d \
+            --no-deps \
+            --force-recreate \
+            frontend
+
+          echo "Esperando que el Frontend este disponible..."
+
+          for intento in $(seq 1 30); do
+            if curl \
+              --fail \
+              --silent \
+              --show-error \
+              --connect-timeout 3 \
+              --max-time 5 \
+              http://localhost:5173 \
+              > /dev/null 2>&1
+            then
+              echo "Frontend funcionando correctamente."
+
+              echo "Variable configurada en el contenedor:"
+              compose exec -T frontend printenv VITE_API_URL
+
+              compose ps frontend
+
+              echo "Eliminando imagenes antiguas sin etiqueta..."
+              docker image prune -f
+
+              exit 0
+            fi
+
+            echo "Intento $intento de 30: Frontend todavia iniciando..."
+            sleep 3
+          done
+
+          echo "ERROR: El Frontend no respondio despues de 90 segundos."
+
+          compose ps frontend || true
+          compose logs --tail=150 frontend || true
+
+          exit 1
           EOF
