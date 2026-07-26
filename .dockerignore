@@ -1,4 +1,10 @@
 node_modules
 dist
+npm-debug.log*
 .git
+.github
 .gitignore
+.env
+.env.*
+coverage
+README.md
