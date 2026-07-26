@@ -1,4 +1,3 @@
-$workflow = @'
 name: Construir y publicar Frontend
 
 on:
@@ -36,16 +35,3 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/heladeria-frontend:latest
-'@
-
-$ruta = Join-Path (Get-Location) ".github\workflows\docker.yml"
-
-[System.IO.Directory]::CreateDirectory(
-    [System.IO.Path]::GetDirectoryName($ruta)
-) | Out-Null
-
-[System.IO.File]::WriteAllText(
-    $ruta,
-    $workflow,
-    [System.Text.UTF8Encoding]::new($false)
-)
