@@ -1,4 +1,4 @@
-name: Construir y publicar Frontend
+name: Construir, publicar y probar SSH del Frontend
 
 on:
   push:
@@ -35,3 +35,71 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/heladeria-frontend:latest
+
+  test-ssh:
+    name: Probar conexion con EC2
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: build-and-push
+
+    steps:
+      - name: Validar Secrets de EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          if [ -z "$EC2_HOST" ]; then
+            echo "ERROR: El Secret EC2_HOST esta vacio."
+            exit 1
+          fi
+
+          if [ -z "$EC2_SSH_KEY" ]; then
+            echo "ERROR: El Secret EC2_SSH_KEY esta vacio."
+            exit 1
+          fi
+
+          echo "Los Secrets de EC2 estan configurados."
+
+      - name: Preparar acceso SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+
+          printf '%s\n' "$EC2_SSH_KEY" \
+            > ~/.ssh/github_actions_frontend
+
+          chmod 600 ~/.ssh/github_actions_frontend
+
+          ssh-keyscan \
+            -T 10 \
+            -H "$EC2_HOST" \
+            >> ~/.ssh/known_hosts
+
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Probar conexion SSH con EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh -T \
+            -o BatchMode=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/github_actions_frontend \
+            "ubuntu@$EC2_HOST" 'bash -se' <<'EOF'
+          set -e
+
+          echo "Conexion SSH correcta."
+          echo "Usuario remoto: $(whoami)"
+          echo "Servidor remoto: $(hostname)"
+
+          docker --version
+          docker compose version
+
+          test -d /home/ubuntu/Docker-Heladeria
+
+          echo "Directorio Docker-Heladeria encontrado."
+          echo "Prueba SSH del Frontend finalizada correctamente."
+          EOF
