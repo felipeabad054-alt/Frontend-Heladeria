@@ -195,13 +195,3 @@ jobs:
           exit 1
           EOF
 
-frontend:
-  image: felipeabad/heladeria-frontend:${IMAGE_TAG:-latest}
-  environment:
-    VITE_API_URL: http://${PUBLIC_HOST}:5000/api
-    VITE_S3_IMAGE_URL: ${S3_IMAGE_URL}
-  ports:
-    - "5173:5173"
-  depends_on:
-    - backend
-  restart: unless-stopped
