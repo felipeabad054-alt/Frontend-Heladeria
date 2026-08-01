@@ -6,6 +6,9 @@ import {
   obtenerSabores,
 } from "./services/saborService";
 import "./App.css";
+const S3_IMAGE_URL =
+  import.meta.env.VITE_S3_IMAGE_URL ||
+  "https://helado-bucket.s3.us-east-2.amazonaws.com/Helado%20Insano.png";
 
 const formularioInicial = {
   nombre: "",
@@ -183,6 +186,11 @@ function App() {
           <h1 className="mb-1">🍦 Heladería Dulce Sabor de  la Tentaciòn</h1>
           <p className="mb-0">
             Sistema de Helados HOT
+            <img
+              src={S3_IMAGE_URL}
+              alt="Helado Insano"
+              className="imagen-helado-s3"
+            />
           </p>
         </div>
       </header>

@@ -26,3 +26,10 @@
 .table th {
   white-space: nowrap;
 }
+.imagen-helado-s3 {
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 16px;
+  display: block;
+}
